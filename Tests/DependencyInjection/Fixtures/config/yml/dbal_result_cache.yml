@@ -1,0 +1,7 @@
+doctrine:
+    dbal:
+        default_connection: default
+        connections:
+            default:
+                dbname: db
+                result_cache_driver: array

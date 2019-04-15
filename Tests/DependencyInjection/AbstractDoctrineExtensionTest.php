@@ -188,6 +188,21 @@ abstract class AbstractDoctrineExtensionTest extends TestCase
         $this->assertCount(0, $calls);
     }
 
+    public function testDbalLoadResultCache()
+    {
+        $container = $this->loadContainer('dbal_result_cache');
+
+        $calls = $container->getDefinition('doctrine.dbal.default_connection.configuration')->getMethodCalls();
+        $this->assertCount(1, $calls);
+
+        $this->assertSame('setResultCacheImpl', $calls[0][0]);
+        $this->assertEquals(new Reference('doctrine.dbal.default_result_cache'), $calls[0][1][0]);
+
+        $this->assertTrue($container->hasAlias('doctrine.dbal.default_result_cache'));
+        $alias = $container->getAlias('doctrine.dbal.default_result_cache');
+        $this->assertEquals('doctrine.orm.connection_default_result_cache', (string) $alias);
+    }
+
     public function testLoadSimpleSingleConnection()
     {
         $container = $this->loadContainer('orm_service_simple_single_entity_manager');

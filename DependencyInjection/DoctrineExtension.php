@@ -170,6 +170,9 @@ class DoctrineExtension extends AbstractDoctrineExtension
 
         unset($connection['schema_filter']);
 
+        $this->loadDbalCacheDrivers($name, $connection, $container, $configuration);
+        unset($connection['result_cache_driver']);
+
         if ($logger) {
             $configuration->addMethodCall('setSQLLogger', [$logger]);
         }
@@ -729,6 +732,9 @@ class DoctrineExtension extends AbstractDoctrineExtension
         $aliasId   = $this->getObjectManagerElementName(sprintf('%s_%s', $entityManagerName, $driverName));
 
         switch ($driverMap['type']) {
+            case null:
+                return null;
+
             case 'service':
                 $serviceId = $driverMap['id'];
                 break;
@@ -762,6 +768,28 @@ class DoctrineExtension extends AbstractDoctrineExtension
         $this->loadCacheDriver('metadata_cache', $entityManager['name'], $entityManager['metadata_cache_driver'], $container);
         $this->loadCacheDriver('result_cache', $entityManager['name'], $entityManager['result_cache_driver'], $container);
         $this->loadCacheDriver('query_cache', $entityManager['name'], $entityManager['query_cache_driver'], $container);
+    }
+
+    /**
+     * Loads a configured entity managers cache drivers.
+     *
+     * @param string           $name       A connection name
+     * @param array            $connection A configured DBAL connection instance
+     * @param ContainerBuilder $container  A ContainerBuilder instance
+     */
+    protected function loadDbalCacheDrivers(string $name, array $connection, ContainerBuilder $container, Definition $configurationDefinition)
+    {
+        $aliasId = $this->loadCacheDriver('result_cache', sprintf('connection_%s', $name), $connection['result_cache_driver'], $container);
+        if ($aliasId === null) {
+            return;
+        }
+
+        // Since the implementation in the bridge always uses `doctrine.orm` as prefix, create another alias for people to use
+        // The temporary `dotrine.dbal.connection_<name>_result_cache` service will no longer be created in 2.0
+        $dbalAliasId = sprintf('doctrine.dbal.%s_result_cache', $name);
+        $container->setAlias($dbalAliasId, new Alias($aliasId));
+
+        $configurationDefinition->addMethodCall('setResultCacheImpl', [new Reference($dbalAliasId)]);
     }
 
     /**

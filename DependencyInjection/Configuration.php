@@ -163,6 +163,7 @@ class Configuration implements ConfigurationInterface
                     ->useAttributeAsKey('name')
                     ->prototype('scalar')->end()
                 ->end()
+                ->append($this->getCacheDriverNode('result_cache_driver', null))
             ->end();
 
         $slaveNode = $connectionNode
@@ -520,9 +521,9 @@ class Configuration implements ConfigurationInterface
             ->useAttributeAsKey('name')
             ->prototype('array')
                 ->addDefaultsIfNotSet()
-                ->append($this->getOrmCacheDriverNode('query_cache_driver'))
-                ->append($this->getOrmCacheDriverNode('metadata_cache_driver'))
-                ->append($this->getOrmCacheDriverNode('result_cache_driver'))
+                ->append($this->getCacheDriverNode('query_cache_driver'))
+                ->append($this->getCacheDriverNode('metadata_cache_driver'))
+                ->append($this->getCacheDriverNode('result_cache_driver'))
                 ->append($this->getOrmEntityListenersNode())
                 ->children()
                     ->scalarNode('connection')->end()
@@ -537,7 +538,7 @@ class Configuration implements ConfigurationInterface
                 ->children()
                     ->arrayNode('second_level_cache')
                         ->children()
-                            ->append($this->getOrmCacheDriverNode('region_cache_driver'))
+                            ->append($this->getCacheDriverNode('region_cache_driver'))
                             ->scalarNode('region_lock_lifetime')->defaultValue(60)->end()
                             ->booleanNode('log_enabled')->defaultValue($this->debug)->end()
                             ->scalarNode('region_lifetime')->defaultValue(0)->end()
@@ -550,7 +551,7 @@ class Configuration implements ConfigurationInterface
                                 ->useAttributeAsKey('name')
                                 ->prototype('array')
                                     ->children()
-                                        ->append($this->getOrmCacheDriverNode('cache_driver'))
+                                        ->append($this->getCacheDriverNode('cache_driver'))
                                         ->scalarNode('lock_path')->defaultValue('%kernel.cache_dir%/doctrine/orm/slc/filelock')->end()
                                         ->scalarNode('lock_lifetime')->defaultValue(60)->end()
                                         ->scalarNode('type')->defaultValue('default')->end()
@@ -668,13 +669,14 @@ class Configuration implements ConfigurationInterface
     }
 
     /**
-     * Return a ORM cache driver node for an given entity manager
+     * Return a cache driver node for a given cache name (e.g. result_cache)
      *
-     * @param string $name
+     * @param string      $name
+     * @param string|null $defaultValue
      *
      * @return ArrayNodeDefinition
      */
-    private function getOrmCacheDriverNode($name)
+    private function getCacheDriverNode($name, $defaultValue = 'array')
     {
         $treeBuilder = new TreeBuilder($name);
 
@@ -688,7 +690,9 @@ class Configuration implements ConfigurationInterface
         $node
             ->addDefaultsIfNotSet()
             ->beforeNormalization()
-                ->ifString()
+                ->ifTrue(static function ($v) : bool {
+                    return $v === null || is_string($v);
+                })
                 ->then(static function ($v) : array {
                     return ['type' => $v];
                 })
@@ -702,7 +706,7 @@ class Configuration implements ConfigurationInterface
                 })
             ->end()
             ->children()
-                ->scalarNode('type')->defaultValue('array')->end()
+                ->scalarNode('type')->defaultValue($defaultValue)->end()
                 ->scalarNode('id')->end()
                 ->scalarNode('pool')->end()
                 ->scalarNode('host')->end()

@@ -78,6 +78,7 @@
             <xsd:element name="slave" type="slave" />
             <xsd:element name="shard" type="shard" />
             <xsd:element name="default-table-option" type="named_scalar" />
+            <xsd:element name="result-cache-driver" type="cache_driver" minOccurs="0" maxOccurs="1" />
         </xsd:choice>
     </xsd:group>
 
